@@ -1,0 +1,20 @@
+{
+  "name": "gpt3-api-demo",
+  "version": "1.0.0",
+  "description": "A simple Node.js server that calls the OpenAI GPT-3 API",
+  "main": "server.ts",
+  "scripts": {
+    "start": "ts-node -T server.ts"
+  },
+  "dependencies": {
+    "axios": "^0.21.1",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "socket.io": "^4.6.1",
+    "typescript": "^4.3.5"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22",
+    "ts-node": "^10.9.1"
+  }
+}

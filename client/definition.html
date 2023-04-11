@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preact GPT-3 App</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet" />
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app"></div>
+    <script type="module">
+        import { h, render } from 'https://cdn.skypack.dev/preact';
+        import { useState, useEffect } from 'https://cdn.skypack.dev/preact/hooks';
+        import { html } from 'https://cdn.skypack.dev/htm/preact';
+        import TextInput from './client/components/TextInput.js';
+        import SubmitButton from './client/components/SubmitButton.js';
+        import ResponseDisplay from './client/components/ResponseDisplay.js';
+        //socketio
+        import io from 'https://cdn.skypack.dev/socket.io-client';
+        const socket = io();
+
+        socket.on('connect', () => {
+            console.log('connected');
+        });
+
+        socket.on('message', (msg) => {
+            console.log('socket message', msg);
+            // eval(msg);
+            // emit as window event
+            window.dispatchEvent(new CustomEvent('message', { detail: msg }));
+        });
+
+        const App = () => {
+            const [text, setText] = useState('');
+            const [topic, setTopic] = useState('Recursion');
+            let [response, setResponse] = useState("");
+            const [loading, setLoading] = useState(false);
+            const handleSubmit = async () => {
+                setLoading(true);
+                const res = await fetch('/api/gpt_grader', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text, topic }),
+                });
+                setLoading(false);
+                const data = await res.json();
+                //   const { raw, text } = data;
+                setResponse(data.text);
+                //   eval(chatresponse);
+            };
+
+            // socket message
+            useEffect(() => {
+                // listen to window event
+                window.addEventListener('message', (e) => {
+                    console.log('message', e.detail);
+                    setResponse(e.detail.text);
+                    setText(e.detail.request.text);
+                });
+
+                return () => {
+                    window.removeEventListener('message', () => {});
+                };
+            }, []);
+
+            const topics = [
+                'Recursion',
+                'Functional Programming',
+                'Difference between digits and numbers',
+                'Cellular Automata',
+                'What makes a good bear',
+            ];
+
+            // extract score from i.e. "GOOD: 7/10"
+            const success = response.includes('GOOD');
+            let score = response ? response.split(' ')[1].split('/')[0] : 0;
+
+            let comment = response.split(score+'/10')[1];
+
+            // let comment = response.split(' ').slice(2).join(' ');
+
+            // response = "GOOD: 4/10"
+            // score = 4
+
+            return html`
+
+          <div class="container mx-auto max-w-2xl p-4">
+            <h1 class="text-2xl mb-4">Definitions</h1>
+            <p class="mb-4 text-lg">
+                Provide a definition for:
+                ${' '} <select name="topic" onChange=${(e) => {
+                    setTopic(e.target.value);
+                    setText('');
+                    setResponse('');
+                }}>
+                    ${topics.map(
+                (topic) => html`
+                        <option selected=${topic === 'Recursion'}>${topic}</option>
+                      `
+            )}
+                </select>
+            </p>
+            <${TextInput} value=${text} onChange=${setText} onSubmit=${handleSubmit} />
+            ${loading ? html`<p>Loading...</p>` : html`<${SubmitButton} onClick=${handleSubmit} />`}
+            
+            ${response && html`
+                <div class="relative pt-1" style="margin: 30px">
+                    <!-- inline-block progress bar 400px wide -->
+                    <p>${success ? html`👍 Nice!` : html`🤔 Hmmm, could you do better?`}</p>
+                    <div  style='width: 400px; height: 30px; display: inline-block; position: relative; border: 1px solid #aaa; border-radius: 10px; overflow: hidden'>
+                        <div style=${`width: ${score * 10}%; height: 100%; background: rgba(0, ${score*25}, 0); `} class=""></div>
+                    </div>
+                    <div style="margin-top: 10px">${comment}</div>
+                </div>
+            `}
+          </div>
+        `;
+        };
+
+        render(html`<${App} />`, document.getElementById('app'));
+    </script>
+
+</body>
+
+</html>
